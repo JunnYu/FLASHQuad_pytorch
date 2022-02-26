@@ -79,7 +79,8 @@ class DataTrainingArguments:
     )
     mlm_probability: float = field(
         default=0.15,
-        metadata={"help": "Ratio of tokens to mask for masked language modeling loss"},
+        metadata={
+            "help": "Ratio of tokens to mask for masked language modeling loss"},
     )
     pad_to_max_length: bool = field(
         default=False,
@@ -132,7 +133,8 @@ def main():
         handlers=[logging.StreamHandler(sys.stdout)],
     )
     logger.setLevel(
-        logging.INFO if is_main_process(training_args.local_rank) else logging.WARN
+        logging.INFO if is_main_process(
+            training_args.local_rank) else logging.WARN
     )
 
     # Log on each process the small summary:
@@ -231,7 +233,8 @@ def main():
     logger.info(f"Training time: {train_time}")
     trainer.save_model()  # Saves the tokenizer too for easy upload
 
-    output_train_file = os.path.join(training_args.output_dir, "train_results.txt")
+    output_train_file = os.path.join(
+        training_args.output_dir, "train_results.txt")
     if trainer.is_world_process_zero():
         with open(output_train_file, "w") as writer:
             logger.info("***** Train results *****")

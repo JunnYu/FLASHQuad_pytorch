@@ -93,5 +93,39 @@ python run_mlm_wwm.py \
 
 ```
 
+# MLM测试(small版本模型checkpoint-70000)
+```python
+import torch
+from flash import FLASHQuadForMaskedLM
+from transformers import BertTokenizerFast
+tokenizer = BertTokenizerFast.from_pretrained("junnyu/roformer_chinese_char_base")
+model = FLASHQuadForMaskedLM.from_pretrained("wwm_flash_small/checkpoint-70000")
+model.eval()
+text = "天气预报说今天的天[MASK]很好，那么我[MASK]一起去公园玩吧！"
+inputs = tokenizer(text, return_tensors="pt")
+with torch.no_grad():
+    pt_outputs = model(**inputs).logits[0]
+
+pt_outputs_sentence = "pytorch: "
+for i, id in enumerate(tokenizer.encode(text)):
+    if id == tokenizer.mask_token_id:
+        val,idx = pt_outputs[i].softmax(-1).topk(k=5)
+        tokens = tokenizer.convert_ids_to_tokens(idx)
+        new_tokens = []
+        for v,t in zip(val.cpu(),tokens):
+            new_tokens.append(f"{t}+{round(v.item(),4)}")
+        pt_outputs_sentence += "[" + "||".join(new_tokens) + "]"
+    else:
+        pt_outputs_sentence += "".join(
+            tokenizer.convert_ids_to_tokens([id], skip_special_tokens=True))
+print(pt_outputs_sentence)
+# pytorch: 天气预报说今天的天[气+0.9887||都+0.0007||天+0.0007||地+0.0007||空+0.0007]很好，那么我[们+0.4775||就+0.4432||也+0.0544||还+0.0031||想+0.0026]一起去公园玩吧！
+```
+
+# Tnews分类
+<p align="center">
+    <img src="figure/tnews.jpg" width="100%" />
+</p>
+
 # Tips:
 不怎么确定实现的对不对，如果代码有错误的话，请帮我指出来，谢谢~
