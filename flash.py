@@ -154,6 +154,8 @@ class FLASHQuadEncoder(nn.Module):
                     config.s,
                     config.norm_type,
                     config.layer_norm_eps,
+                    config.hidden_act,
+                    config.max_position_embeddings,
                 )
                 for _ in range(config.num_hidden_layers)
             ]

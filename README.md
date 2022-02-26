@@ -4,6 +4,19 @@ pytorch implement of FLASHQuad
 # Describtion
 个人实现`pytorch`版本的[《Transformer Quality in Linear Time》](https://arxiv.org/abs/2202.10447)
 
+# 更新:
+- 2022/02/26 修改了`rel_pos_bias`部分的代码,发现之前的代码会出现输出异常(训练是在512长度进行的,在别的长度进行测试,模型的输出会出问题. )
+```python
+    # 之前的代码.
+    bias = self.rel_pos_bias(seq_len)
+    kernel = torch.square(torch.relu(qk / seq_len + bias))
+    # 更新后的代码.
+    self.max_position_embeddings = 512
+    bias = self.rel_pos_bias(self.max_position_embeddings)[:, :seq_len, :seq_len]
+    kernel = torch.square(torch.relu(qk / self.max_position_embeddings + bias))
+```
+
+
 # Usage
 ```python
 from flash import FLASHQuadConfig, FLASHQuadModel
@@ -15,56 +28,69 @@ input_ids = torch.randint(0,12000,(4,128))
 with torch.no_grad():
     outputs = model(input_ids=input_ids, output_attentions=True, output_hidden_states=True)
     print(outputs)
-# BaseModelOutput(last_hidden_state=tensor([[[-9.4036e-01,  2.7427e-01, -1.1174e-01,  ...,  2.1995e-01,
-#            6.8563e-01,  3.7119e-01],
-#          [ 1.4871e-01,  7.9682e-01,  6.6237e-01,  ...,  1.5242e+00,
-#            4.3464e-01,  4.5139e-01],
-#          [ 8.4712e-01,  1.1916e+00,  1.4192e+00,  ...,  5.9129e-01,
-#            1.6662e-01,  1.2947e+00],
-#          ...,
-#          [-1.4811e+00, -4.6251e-01, -1.4264e+00,  ...,  6.2525e-01,
-#           -2.0381e-01,  3.5314e-01],
-#          [ 5.8889e-02,  3.1540e-01,  5.3227e-01,  ...,  9.8981e-01,
-#            1.9056e-01, -1.0363e-01],
-#          [ 7.3799e-01, -7.2342e-01,  9.3099e-01,  ...,  1.3865e+00,
-#            2.7682e-02, -4.0529e-01]],
+# BaseModelOutput(last_hidden_state=tensor([[[-9.4036e-01,  2.7427e-01, -1.1174e-01,  ...,  2.1995e-01.....
+```
 
-#         [[-1.2761e+00,  1.0622e-01,  1.6675e-01,  ...,  6.4745e-01,
-#            8.1417e-01,  1.8487e-01],
-#          [ 1.3764e+00,  1.9084e-01,  8.4460e-01,  ...,  1.2662e+00,
-#           -1.0687e-01,  4.4796e-01],
-#          [ 5.0415e-01,  1.1916e+00,  8.9216e-01,  ...,  9.3314e-01,
-#           -1.4971e-01,  3.5086e-01],
-#          ...,
-#          [-1.5334e+00,  5.2134e-01, -6.1524e-01,  ...,  2.1776e-01,
-#            8.9071e-01,  2.4238e-01],
-#          [ 8.1833e-02, -3.0472e-01, -2.3848e-01,  ...,  2.8812e-01,
-#            8.0858e-01, -6.6519e-01],
-#          [-2.3373e-01, -6.0103e-01, -3.6428e-01,  ...,  2.4339e-01,
-#            9.5541e-02,  5.1453e-01]],
+# Pretrain
+## 准备数据
+## CLUECorpusSmall 数据集处理教程(摘抄自[paddlenlp](https://github.com/PaddlePaddle/PaddleNLP/blob/develop/examples/language_model/data_tools/README.md))
+**数据集简介**：可用于语言建模、预训练或生成型任务等，数据量超过14G，近4000个定义良好的txt文件、50亿个字。主要部分来自于nlp_chinese_corpus项目
+包含如下子语料库（总共14G语料）：新闻语料[news2016zh_corpus.zip](https://bj.bcebos.com/v1/ai-studio-online/6bac09db4e6d4857b6d680d34447457490cb2dbdd8b8462ea1780a407f38e12b?responseContentDisposition=attachment%3B%20filename%3Dnews2016zh_corpus.zip)， 社区互动语料[webText2019zh_corpus.zip](https://bj.bcebos.com/v1/ai-studio-online/83da03f7b4974871a52348b41c16c7e3b34a26d5ca644f558df8435be4de51c3?responseContentDisposition=attachment%3B%20filename%3DwebText2019zh_corpus.zip)，维基百科语料[wiki2019zh_corpus.zip](https://bj.bcebos.com/v1/ai-studio-online/d7a166408d8b4ffdaf4de9cfca09f6ee1e2340260f26440a92f78134d068b28f?responseContentDisposition=attachment%3B%20filename%3Dwiki2019zh_corpus.zip)，评论数据语料[comment2019zh_corpus.zip](https://bj.bcebos.com/v1/ai-studio-online/b66ddd445735408383c42322850ac4bb82faf9cc611447c2affb925443de7a6d?responseContentDisposition=attachment%3B%20filename%3Dcomment2019zh_corpus.zip)。
 
-#         [[-1.9778e+00,  8.3909e-02,  1.0512e-01,  ...,  8.1101e-01,
-#           -5.6207e-02,  2.2087e-01],
-#          [-5.7366e-04,  3.5103e-01,  4.3759e-01,  ...,  7.0966e-01,
-#           -2.4418e-01, -2.6368e-01],
-#          [ 5.6346e-01,  1.1321e+00,  8.4332e-01,  ...,  2.6250e-01,
-#            3.9772e-02,  1.2804e+00],
-#          ...,
-#          [-2.7273e-01,  1.9569e-01,  4.5514e-01,  ...,  5.2621e-01,
-#            1.7374e-01,  3.7357e-01],
-#          [ 3.2217e-01, -3.6218e-01,  6.6083e-01,  ...,  7.6413e-01,
-#            7.0839e-01,  7.0626e-01],
-#          [ 1.6915e-01, -6.3726e-01,  1.0565e+00,  ...,  5.9521e-01,
-#           -1.1999e-01,  9.4385e-02]],
+**数据集下载**：
+用户可以通过官方github网页下载，https://github.com/CLUEbenchmark/CLUECorpus2020 。同时，为方便用户，我们也提供了aistudio数据集下载地址。[part1](https://aistudio.baidu.com/aistudio/datasetdetail/60598)，[part2](https://aistudio.baidu.com/aistudio/datasetdetail/124357)。使用aistudio版本的数据，下载好后，可以核对md5值：
+```shell
+> md5sum ./*
+ 8a8be341ebce39cfe9524fb0b46b08c5  ./comment2019zh_corpus.zip
+ 4bdc2c941a7adb4a061caf273fea42b8  ./news2016zh_corpus.zip
+ fc582409f078b10d717caf233cc58ddd  ./webText2019zh_corpus.zip
+ 157dacde91dcbd2e52a60af49f710fa5  ./wiki2019zh_corpus.zip
+```
+(1) 解压文件
+```shell
+unzip comment2019zh_corpus.zip -d  clue_corpus_small_14g/comment2019zh_corpus
+unzip news2016zh_corpus.zip    -d  clue_corpus_small_14g/news2016zh_corpus  
+unzip webText2019zh_corpus.zip -d  clue_corpus_small_14g/webText2019zh_corpus
+unzip wiki2019zh_corpus.zip    -d  clue_corpus_small_14g/wiki2019zh_corpus  
+```
+(2) 将txt文件转换为jsonl格式
+```shell
+python trans_to_json.py  --input_path ./clue_corpus_small_14g --output_path clue_corpus_small_14g.jsonl
+mkdir data #创建data文件夹
+mv clue_corpus_small_14g.jsonl ./data #将jsonl放进该目录
+```
+(3) 使用rjieba进行中文分词,会得到`data/refids.txt`和`data/reftext.txt`两个文件,并组合`data/refids.txt`和`data/reftext.txt`两个文件保存成`huggingface`的`dataset`
+```shell
+python run_chinese_ref.py  --model_name junnyu/roformer_chinese_char_base --input_path ./data/clue_corpus_small_14g.jsonl
+```
 
-#         [[-3.7354e-01, -9.3200e-02, -1.0634e+00,  ...,  8.2995e-01,
-#            5.5959e-01,  7.1173e-01],
-#          [ 2.2329e-01,  1.1134e+00,  9.2142e-01,  ...,  8.3274e-01,
-#           0.0000e+00, 0.0000e+00],
-#          [0.0000e+00, 0.0000e+00, 0.0000e+00,  ..., 2.9886e-06,
-#           5.0118e-04, 0.0000e+00],
-#          [7.0109e-07, 0.0000e+00, 0.0000e+00,  ..., 0.0000e+00,
-#           2.9887e-06, 5.0104e-04]]])))
+## 开始训练(small版本模型)
+```bash
+TRAIN_DIR=./clue_small_wwm_data
+OUTPUT_DIR=./wwm_flash_small/
+BATCH_SIZE=32
+ACCUMULATION=4
+LR=1e-4
+python run_mlm_wwm.py \
+    --do_train \
+    --tokenizer_name junnyu/roformer_chinese_char_base \
+    --train_dir $TRAIN_DIR \
+    --output_dir $OUTPUT_DIR \
+    --logging_dir $OUTPUT_DIR/logs \
+    --per_device_train_batch_size $BATCH_SIZE \
+    --gradient_accumulation_steps $ACCUMULATION \
+    --learning_rate $LR \
+    --weight_decay 0.01 \
+    --adam_epsilon 1e-6 \
+    --max_steps 250000 \
+    --warmup_steps 5000 \
+    --logging_steps 100 \
+    --save_steps 5000 \
+    --seed 2022 \
+    --max_grad_norm 3.0 \
+    --dataloader_num_workers 6 \
+    --fp16
+
 ```
 
 # Tips:

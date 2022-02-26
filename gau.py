@@ -58,6 +58,7 @@ class GAU(nn.Module):
         norm_type="layer_norm",
         eps=1e-5,
         hidden_act="silu",
+        max_position_embeddings=512,
     ):
         super().__init__()
         self.s = s
@@ -71,10 +72,12 @@ class GAU(nn.Module):
             if norm_type == "layer_norm"
             else ScaleNorm(eps=eps)
         )
-        self.w = nn.Parameter(torch.randn(2 * 512 - 1))
+        self.w = nn.Parameter(torch.randn(
+            2 * self.max_position_embeddings - 1))
         self.a = nn.Parameter(torch.randn(1, self.s))
         self.b = nn.Parameter(torch.randn(1, self.s))
         self.act_fn = ACT2FN[hidden_act]
+        self.max_position_embeddings = max_position_embeddings
 
         nn.init.normal_(self.weight, std=0.02)
         nn.init.normal_(self.w, std=0.02)
@@ -110,8 +113,10 @@ class GAU(nn.Module):
         # Calculate the quadratic attention.
         qk = torch.einsum("bnd,bmd->bnm", q, k)
 
-        bias = self.rel_pos_bias(seq_len)
-        kernel = torch.square(torch.relu(qk / seq_len + bias))
+        bias = self.rel_pos_bias(self.max_position_embeddings)[:, :seq_len,
+                                                               :seq_len]
+        kernel = torch.square(torch.relu(
+            qk / self.max_position_embeddings + bias))
         # attention_mask
         if attention_mask is not None:
             assert attention_mask.ndim == 2
