@@ -1,16 +1,15 @@
 import argparse
 import json
-from typing import List
-
-from datasets import load_dataset, concatenate_datasets, Dataset
 import multiprocessing
 import os
-import time
 import sys
-import rjieba
-from transformers import BertTokenizerFast
+import time
+from typing import List
 
+import rjieba
+from datasets import Dataset, concatenate_datasets, load_dataset
 from tqdm import tqdm
+from transformers import BertTokenizerFast
 
 
 def _is_chinese_char(cp):
@@ -70,7 +69,7 @@ def add_sub_symbol(bert_tokens: List[str], chinese_word_set: set()):
         if is_chinese(bert_word[start]):
             l = min(end - start, max_word_len)
             for i in range(l, 1, -1):
-                whole_word = "".join(bert_word[start: start + i])
+                whole_word = "".join(bert_word[start : start + i])
                 if whole_word in chinese_word_set:
                     for j in range(start + 1, start + i):
                         bert_word[j] = "##" + bert_word[j]
@@ -112,8 +111,7 @@ class Converter:
         self.args = args
 
     def initializer(self):
-        Converter.tokenizer = BertTokenizerFast.from_pretrained(
-            self.args.model_name)
+        Converter.tokenizer = BertTokenizerFast.from_pretrained(self.args.model_name)
 
         # Split document to sentence.
         Converter.splitter = BlockSizeSplitter()
@@ -216,8 +214,7 @@ def main(args):
     reftext = load_dataset("text", data_files="data/reftext.txt")["train"]
     refids = load_dataset("text", data_files="data/refids.txt")["train"]
     refids = refids.rename_column("text", "chinese_ref")
-    refids = refids.map(
-        lambda example: {"chinese_ref": eval(example["chinese_ref"])})
+    refids = refids.map(lambda example: {"chinese_ref": eval(example["chinese_ref"])})
     concat_ds = concatenate_datasets([reftext, refids], axis=1)
     concat_ds.save_to_disk("./clue_small_wwm_data")
 

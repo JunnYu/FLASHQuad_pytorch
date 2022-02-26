@@ -15,14 +15,14 @@
 # You can also adapt this script on your own masked language modeling task. Pointers for this are left as comments.
 
 import logging
-import time
 import os
 import sys
+import time
 from dataclasses import dataclass, field
 from typing import Optional
 
-from datasets import Dataset
 import transformers
+from datasets import Dataset
 from transformers import (
     BertTokenizerFast,
     DataCollatorForWholeWordMask,
@@ -31,9 +31,9 @@ from transformers import (
     TrainingArguments,
     set_seed,
 )
-from flash import FLASHQuadConfig, FLASHQuadForMaskedLM
 from transformers.trainer_utils import get_last_checkpoint, is_main_process
 
+from flash import FLASHQuadConfig, FLASHQuadForMaskedLM
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,7 @@ class ModelArguments:
     """
     Arguments pertaining to which model/config/tokenizer we are going to fine-tune, or train from scratch.
     """
+
     tokenizer_name: Optional[str] = field(
         default="junnyu/roformer_chinese_char_base",
         metadata={
@@ -78,8 +79,7 @@ class DataTrainingArguments:
     )
     mlm_probability: float = field(
         default=0.15,
-        metadata={
-            "help": "Ratio of tokens to mask for masked language modeling loss"},
+        metadata={"help": "Ratio of tokens to mask for masked language modeling loss"},
     )
     pad_to_max_length: bool = field(
         default=False,
@@ -132,8 +132,7 @@ def main():
         handlers=[logging.StreamHandler(sys.stdout)],
     )
     logger.setLevel(
-        logging.INFO if is_main_process(
-            training_args.local_rank) else logging.WARN
+        logging.INFO if is_main_process(training_args.local_rank) else logging.WARN
     )
 
     # Log on each process the small summary:
@@ -157,9 +156,7 @@ def main():
 
     config = FLASHQuadConfig(num_hidden_layers=12)  # small
     # tokenizer使用了roformer_chinese_char_base
-    tokenizer = BertTokenizerFast.from_pretrained(
-        model_args.tokenizer_name
-    )
+    tokenizer = BertTokenizerFast.from_pretrained(model_args.tokenizer_name)
     model = FLASHQuadForMaskedLM(config)
     model.resize_token_embeddings(len(tokenizer))
 
@@ -234,8 +231,7 @@ def main():
     logger.info(f"Training time: {train_time}")
     trainer.save_model()  # Saves the tokenizer too for easy upload
 
-    output_train_file = os.path.join(
-        training_args.output_dir, "train_results.txt")
+    output_train_file = os.path.join(training_args.output_dir, "train_results.txt")
     if trainer.is_world_process_zero():
         with open(output_train_file, "w") as writer:
             logger.info("***** Train results *****")

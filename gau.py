@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from transformers.activations import ACT2FN
 
 
@@ -15,8 +14,7 @@ def rope(x, dim):
     for i in spatial_shape:
         total_len *= i
         position = torch.reshape(
-            torch.arange(total_len, dtype=x.dtype,
-                         device=x.device), spatial_shape
+            torch.arange(total_len, dtype=x.dtype, device=x.device), spatial_shape
         )
     for i in range(dim[-1] + 1, len(shape) - 1, 1):
         position = position.unsqueeze(-1)
@@ -72,8 +70,7 @@ class GAU(nn.Module):
             if norm_type == "layer_norm"
             else ScaleNorm(eps=eps)
         )
-        self.w = nn.Parameter(torch.randn(
-            2 * self.max_position_embeddings - 1))
+        self.w = nn.Parameter(torch.randn(2 * self.max_position_embeddings - 1))
         self.a = nn.Parameter(torch.randn(1, self.s))
         self.b = nn.Parameter(torch.randn(1, self.s))
         self.act_fn = ACT2FN[hidden_act]
@@ -104,8 +101,7 @@ class GAU(nn.Module):
         seq_len = x.shape[1]
         shortcut, x = x, self.LayerNorm(x)
         uv = self.uv(x)
-        u, v, base = torch.split(self.act_fn(
-            uv), [self.e, self.e, self.s], dim=-1)
+        u, v, base = torch.split(self.act_fn(uv), [self.e, self.e, self.s], dim=-1)
         # Generate Query (q) and Key (k) from base.
         base = torch.einsum("...r,hr->...hr", base, self.weight) + self.bias
         base = rope(base, dim=1)
@@ -113,10 +109,8 @@ class GAU(nn.Module):
         # Calculate the quadratic attention.
         qk = torch.einsum("bnd,bmd->bnm", q, k)
 
-        bias = self.rel_pos_bias(self.max_position_embeddings)[:, :seq_len,
-                                                               :seq_len]
-        kernel = torch.square(torch.relu(
-            qk / self.max_position_embeddings + bias))
+        bias = self.rel_pos_bias(self.max_position_embeddings)[:, :seq_len, :seq_len]
+        kernel = torch.square(torch.relu(qk / self.max_position_embeddings + bias))
         # attention_mask
         if attention_mask is not None:
             assert attention_mask.ndim == 2

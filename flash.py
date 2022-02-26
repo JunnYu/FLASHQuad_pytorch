@@ -1,7 +1,11 @@
 import torch
 import torch.nn as nn
 from transformers.configuration_utils import PretrainedConfig
-from transformers.modeling_outputs import BaseModelOutput, MaskedLMOutput, SequenceClassifierOutput
+from transformers.modeling_outputs import (
+    BaseModelOutput,
+    MaskedLMOutput,
+    SequenceClassifierOutput,
+)
 from transformers.modeling_utils import PreTrainedModel
 from transformers.models.bert.modeling_bert import (
     BertOnlyMLMHead as FLASHQuadOnlyMLMHead,
@@ -30,7 +34,7 @@ class FLASHQuadConfig(PretrainedConfig):
         s=128,
         norm_type="scale_norm",
         gradient_checkpointing=False,
-        dropout=0.,
+        dropout=0.0,
         hidden_act="silu",
         **kwargs
     ):
@@ -58,13 +62,11 @@ class FLASHQuadPreTrainedModel(PreTrainedModel):
     def _init_weights(self, module):
         """Initialize the weights"""
         if isinstance(module, nn.Linear):
-            module.weight.data.normal_(
-                mean=0.0, std=self.config.initializer_range)
+            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
             if module.bias is not None:
                 module.bias.data.zero_()
         elif isinstance(module, nn.Embedding):
-            module.weight.data.normal_(
-                mean=0.0, std=self.config.initializer_range)
+            module.weight.data.normal_(mean=0.0, std=self.config.initializer_range)
             if module.padding_idx is not None:
                 module.weight.data[module.padding_idx].zero_()
         elif isinstance(module, nn.LayerNorm):
@@ -91,11 +93,11 @@ class FLASHQuadEmbeddings(nn.Module):
         )
         self.dropout = nn.Dropout(config.dropout)
         self.register_buffer(
-            "position_ids", torch.arange(
-                config.max_position_embeddings).expand((1, -1))
+            "position_ids", torch.arange(config.max_position_embeddings).expand((1, -1))
         )
         self.scaledsin_scalar = nn.Parameter(
-            torch.ones(1) / (config.hidden_size ** 0.5))
+            torch.ones(1) / (config.hidden_size ** 0.5)
+        )
         self.register_buffer("scaledsin_embeddings", self.get_scaledsin())
 
     def get_scaledsin(self):
@@ -115,27 +117,21 @@ class FLASHQuadEmbeddings(nn.Module):
         # scaledsin *= scalar
         return scaledsin
 
-    def forward(
-        self,
-        input_ids=None,
-        token_type_ids=None,
-        position_ids=None
-    ):
+    def forward(self, input_ids=None, token_type_ids=None, position_ids=None):
         input_shape = input_ids.shape
         seq_length = input_shape[1]
 
         if position_ids is None:
-            position_ids = self.position_ids[
-                :, : seq_length
-            ]
+            position_ids = self.position_ids[:, :seq_length]
 
         if token_type_ids is None:
             token_type_ids = torch.zeros_like(input_ids)
 
         inputs_embeds = self.word_embeddings(input_ids)
         token_type_embeddings = self.token_type_embeddings(token_type_ids)
-        position_embeddings = self.scaledsin_embeddings[position_ids] * \
-            self.scaledsin_scalar
+        position_embeddings = (
+            self.scaledsin_embeddings[position_ids] * self.scaledsin_scalar
+        )
         embeddings = inputs_embeds + token_type_embeddings + position_embeddings
         embeddings = self.LayerNorm(embeddings)
         embeddings = self.dropout(embeddings)
@@ -263,7 +259,8 @@ class FLASHQuadModel(FLASHQuadPreTrainedModel):
 
         if attention_mask is None:
             attention_mask = (input_ids != self.config.pad_token_id).type_as(
-                self.embeddings.word_embeddings.weight)
+                self.embeddings.word_embeddings.weight
+            )
 
         if token_type_ids is None:
             token_type_ids = torch.zeros_like(input_ids)
@@ -372,7 +369,9 @@ class FLASHQuadForSequenceClassification(FLASHQuadPreTrainedModel):
 
         self.flash_quad = FLASHQuadModel(config)
         classifier_dropout = (
-            config.classifier_dropout if config.classifier_dropout is not None else config.dropout
+            config.classifier_dropout
+            if config.classifier_dropout is not None
+            else config.dropout
         )
         self.dropout = nn.Dropout(classifier_dropout)
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
@@ -392,7 +391,9 @@ class FLASHQuadForSequenceClassification(FLASHQuadPreTrainedModel):
         return_dict=None,
     ):
 
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = (
+            return_dict if return_dict is not None else self.config.use_return_dict
+        )
 
         outputs = self.flash_quad(
             input_ids,
@@ -411,7 +412,9 @@ class FLASHQuadForSequenceClassification(FLASHQuadPreTrainedModel):
             if self.config.problem_type is None:
                 if self.num_labels == 1:
                     self.config.problem_type = "regression"
-                elif self.num_labels > 1 and (labels.dtype == torch.long or labels.dtype == torch.int):
+                elif self.num_labels > 1 and (
+                    labels.dtype == torch.long or labels.dtype == torch.int
+                ):
                     self.config.problem_type = "single_label_classification"
                 else:
                     self.config.problem_type = "multi_label_classification"
@@ -424,8 +427,7 @@ class FLASHQuadForSequenceClassification(FLASHQuadPreTrainedModel):
                     loss = loss_fct(logits, labels)
             elif self.config.problem_type == "single_label_classification":
                 loss_fct = nn.CrossEntropyLoss()
-                loss = loss_fct(
-                    logits.reshape(-1, self.num_labels), labels.reshape(-1))
+                loss = loss_fct(logits.reshape(-1, self.num_labels), labels.reshape(-1))
             elif self.config.problem_type == "multi_label_classification":
                 loss_fct = nn.BCEWithLogitsLoss()
                 loss = loss_fct(logits, labels)
