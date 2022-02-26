@@ -13,10 +13,10 @@ def rope(x, dim):
     total_len = 1
     for i in spatial_shape:
         total_len *= i
-        position = torch.reshape(
-            torch.arange(total_len, dtype=x.dtype,
-                         device=x.device), spatial_shape
-        )
+    position = torch.reshape(
+        torch.arange(total_len, dtype=x.dtype,
+                     device=x.device), spatial_shape
+    )
     for i in range(dim[-1] + 1, len(shape) - 1, 1):
         position = position.unsqueeze(-1)
     half_size = shape[-1] // 2
