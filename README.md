@@ -4,7 +4,13 @@ pytorch implement of FLASHQuad
 # Describtion
 个人实现`pytorch`版本的[《Transformer Quality in Linear Time》](https://arxiv.org/abs/2202.10447)
 
-# 更新:
+# 存在的问题
+- `A = square(relu(qk / seq_len + bias))`感觉不对劲，假设训练的时候都是在seq_len=512的长度上进行的，如果预测的时候seq_len=16时，A的结果会发生很大的变化。
+- `embedding`部分和`MLM head`不确定是否使用的是`ScaleNorm`，不确定是否使用到`dropout`。
+- 发现当前代码训练出来的模型结果不理想，`n-1`层的输出和`n`层的输出差距不大。
+
+
+# 更新
 - 2022/02/26 修改了`rel_pos_bias`部分的代码,发现之前的代码会出现输出异常(训练是在512长度进行的,在别的长度进行测试,模型的输出会出问题. )
 ```python
     # 之前的代码.
@@ -127,5 +133,5 @@ print(pt_outputs_sentence)
     <img src="figure/tnews.jpg" width="100%" />
 </p>
 
-# Tips:
+# Tips
 不怎么确定实现的对不对，如果代码有错误的话，请帮我指出来，谢谢~
