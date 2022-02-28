@@ -11,6 +11,7 @@ pytorch implement of FLASHQuad
 
 
 # 更新
+- 2022/02/28 添加[checkpoint-170000的small权重](https://huggingface.co/junnyu/flashquad_small_wwm_cluecorpussmall)，[训练日志1](https://wandb.ai/junyu/huggingface/runs/ofdc74wr)和[训练日志2](https://wandb.ai/junyu/huggingface/runs/2ep6cl14)，感觉结果不理想。
 - 2022/02/26 修改了`rel_pos_bias`部分的代码,发现之前的代码会出现输出异常(训练是在512长度进行的,在别的长度进行测试,模型的输出会出问题. )
 ```python
     # 之前的代码.
@@ -21,7 +22,6 @@ pytorch implement of FLASHQuad
     bias = self.rel_pos_bias(self.max_position_embeddings)[:, :seq_len, :seq_len]
     kernel = torch.square(torch.relu(qk / self.max_position_embeddings + bias))
 ```
-
 
 # Usage
 ```python
@@ -104,8 +104,8 @@ python run_mlm_wwm.py \
 import torch
 from flash import FLASHQuadForMaskedLM
 from transformers import BertTokenizerFast
-tokenizer = BertTokenizerFast.from_pretrained("junnyu/roformer_chinese_char_base")
-model = FLASHQuadForMaskedLM.from_pretrained("wwm_flash_small/checkpoint-70000")
+tokenizer = BertTokenizerFast.from_pretrained("junnyu/flashquad_small_wwm_cluecorpussmall")
+model = FLASHQuadForMaskedLM.from_pretrained("junnyu/flashquad_small_wwm_cluecorpussmall")
 model.eval()
 text = "天气预报说今天的天[MASK]很好，那么我[MASK]一起去公园玩吧！"
 inputs = tokenizer(text, return_tensors="pt")
@@ -125,7 +125,7 @@ for i, id in enumerate(tokenizer.encode(text)):
         pt_outputs_sentence += "".join(
             tokenizer.convert_ids_to_tokens([id], skip_special_tokens=True))
 print(pt_outputs_sentence)
-# pytorch: 天气预报说今天的天[气+0.9887||都+0.0007||天+0.0007||地+0.0007||空+0.0007]很好，那么我[们+0.4775||就+0.4432||也+0.0544||还+0.0031||想+0.0026]一起去公园玩吧！
+# pytorch: 天气预报说今天的天[气+0.9948||空+0.0011||色+0.0007||候+0.0004||势+0.0003]很好，那么我[就+0.4915||们+0.4186||也+0.0753||还+0.0021||都+0.0016]一起去公园玩吧！
 ```
 
 # Tnews分类
