@@ -11,6 +11,7 @@ pytorch implement of FLASHQuad
 
 
 # 更新
+- 2022/03/01 使用带有`mlm_acc`的`Trainer`，训练过程中可以监控训练集`每logging_steps`的MLM准确率。
 - 2022/02/28 添加[checkpoint-170000的small权重](https://huggingface.co/junnyu/flashquad_small_wwm_cluecorpussmall)，[训练日志1](https://wandb.ai/junyu/huggingface/runs/ofdc74wr)和[训练日志2](https://wandb.ai/junyu/huggingface/runs/2ep6cl14)，感觉结果不理想。
 - 2022/02/26 修改了`rel_pos_bias`部分的代码,发现之前的代码会出现输出异常(训练是在512长度进行的,在别的长度进行测试,模型的输出会出问题. )
 ```python
@@ -99,7 +100,7 @@ python run_mlm_wwm.py \
 
 ```
 
-# MLM测试(small版本模型checkpoint-70000)
+# MLM测试(small版本模型checkpoint-170000)
 ```python
 import torch
 from flash import FLASHQuadForMaskedLM
