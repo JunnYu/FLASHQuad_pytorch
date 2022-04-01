@@ -1,5 +1,5 @@
-# FLASHQuad_pytorch
-pytorch implement of FLASHQuad
+# FLASHQuad_pytorch & FLASH_pytorch
+pytorch implement of FLASHQuad and FLASH
 
 # Describtion
 个人实现`pytorch`版本的[《Transformer Quality in Linear Time》](https://arxiv.org/abs/2202.10447)
@@ -11,6 +11,7 @@ pytorch implement of FLASHQuad
 
 
 # 更新
+- 2022/04/01 添加[lucidrains实现的FLASH-pytorch](https://github.com/lucidrains/FLASH-pytorch)，并添加训练好的权重[flash_small_wwm_cluecorpussmall权重](https://huggingface.co/junnyu/flash_small_wwm_cluecorpussmall) 和 [训练日志](https://wandb.ai/junyu/huggingface/runs/1jg2jlgt)。
 - 2022/03/01 使用带有`mlm_acc`的`Trainer`，训练过程中可以监控训练集`每logging_steps`的MLM准确率。
 - 2022/02/28 添加[checkpoint-170000的small权重](https://huggingface.co/junnyu/flashquad_small_wwm_cluecorpussmall)，[训练日志1](https://wandb.ai/junyu/huggingface/runs/ofdc74wr)和[训练日志2](https://wandb.ai/junyu/huggingface/runs/2ep6cl14)，感觉结果不理想。
 - 2022/02/26 修改了`rel_pos_bias`部分的代码,发现之前的代码会出现输出异常(训练是在512长度进行的,在别的长度进行测试,模型的输出会出问题. )
@@ -26,6 +27,7 @@ pytorch implement of FLASHQuad
 
 # Usage
 ```python
+# flashquad
 from flash import FLASHQuadConfig, FLASHQuadModel
 import torch
 config = FLASHQuadConfig()
@@ -35,7 +37,19 @@ input_ids = torch.randint(0,12000,(4,128))
 with torch.no_grad():
     outputs = model(input_ids=input_ids, output_attentions=True, output_hidden_states=True)
     print(outputs)
-# BaseModelOutput(last_hidden_state=tensor([[[-9.4036e-01,  2.7427e-01, -1.1174e-01,  ...,  2.1995e-01.....
+
+# flash
+from flash import FLASHConfig, FLASHModel
+import torch
+config = FLASHConfig()
+model = FLASHModel(config)
+model.eval()
+input_ids = torch.randint(0, 12000, (4, 128))
+with torch.no_grad():
+    outputs = model(
+        input_ids=input_ids, output_attentions=True, output_hidden_states=True
+    )
+    print(outputs)
 ```
 
 # Pretrain
@@ -100,8 +114,9 @@ python run_mlm_wwm.py \
 
 ```
 
-# MLM测试(small版本模型checkpoint-170000)
+# MLM测试
 ```python
+# flashquad
 import torch
 from flash import FLASHQuadForMaskedLM
 from transformers import BertTokenizerFast
@@ -127,6 +142,33 @@ for i, id in enumerate(tokenizer.encode(text)):
             tokenizer.convert_ids_to_tokens([id], skip_special_tokens=True))
 print(pt_outputs_sentence)
 # pytorch: 天气预报说今天的天[气+0.9948||空+0.0011||色+0.0007||候+0.0004||势+0.0003]很好，那么我[就+0.4915||们+0.4186||也+0.0753||还+0.0021||都+0.0016]一起去公园玩吧！
+
+# flash
+import torch
+from flash import FLASHForMaskedLM
+from transformers import BertTokenizerFast
+tokenizer = BertTokenizerFast.from_pretrained("junnyu/flash_small_wwm_cluecorpussmall")
+model = FLASHForMaskedLM.from_pretrained("junnyu/flash_small_wwm_cluecorpussmall")
+model.eval()
+text = "天气预报说今天的天[MASK]很好，那么我[MASK]一起去公园玩吧！"
+inputs = tokenizer(text, return_tensors="pt", return_token_type_ids=False)
+with torch.no_grad():
+    pt_outputs = model(**inputs).logits[0]
+
+pt_outputs_sentence = "pytorch: "
+for i, id in enumerate(tokenizer.encode(text)):
+    if id == tokenizer.mask_token_id:
+        val,idx = pt_outputs[i].softmax(-1).topk(k=5)
+        tokens = tokenizer.convert_ids_to_tokens(idx)
+        new_tokens = []
+        for v,t in zip(val.cpu(),tokens):
+            new_tokens.append(f"{t}+{round(v.item(),4)}")
+        pt_outputs_sentence += "[" + "||".join(new_tokens) + "]"
+    else:
+        pt_outputs_sentence += "".join(
+            tokenizer.convert_ids_to_tokens([id], skip_special_tokens=True))
+print(pt_outputs_sentence)
+pytorch: 天气预报说今天的天[气+0.9701||天+0.0124||的+0.004||很+0.0016||也+0.0012]很好，那么我[们+0.7939||也+0.0495||我+0.0458||就+0.0295||的+0.0121]一起去公园玩吧！
 ```
 
 # Tnews分类

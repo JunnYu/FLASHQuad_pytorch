@@ -32,11 +32,16 @@ from transformers import (
 )
 from transformers.trainer_utils import get_last_checkpoint, is_main_process
 
-from flash import FLASHQuadConfig, FLASHQuadForMaskedLM
+from flash import FLASHQuadConfig, FLASHQuadForMaskedLM, FLASHConfig, FLASHForMaskedLM
 from mlm_trainer import Trainer
 
 logger = logging.getLogger(__name__)
 
+
+name2cls = {
+    "flash": (FLASHConfig, FLASHForMaskedLM ),
+    "flashquad" : (FLASHQuadConfig, FLASHQuadForMaskedLM ),
+}
 
 @dataclass
 class ModelArguments:
@@ -50,7 +55,12 @@ class ModelArguments:
             "help": "Pretrained tokenizer name or path if not the same as model_name"
         },
     )
-
+    model_name: Optional[str] = field(
+        default="flash",
+        metadata={
+            "help": "model_name"
+        },
+    )
 
 @dataclass
 class DataTrainingArguments:
@@ -156,10 +166,11 @@ def main():
     # 加载clue_wwm_13g数据集
     datasets = Dataset.load_from_disk(data_args.train_dir)
 
-    config = FLASHQuadConfig(num_hidden_layers=12)  # small
+    config_cls, model_cls = name2cls[model_args.model_name]
+    config = config_cls(num_hidden_layers=12)  # small
     # tokenizer使用了roformer_chinese_char_base
     tokenizer = BertTokenizerFast.from_pretrained(model_args.tokenizer_name)
-    model = FLASHQuadForMaskedLM(config)
+    model = model_cls(config)
     model.resize_token_embeddings(len(tokenizer))
 
     # Preprocessing the datasets.
