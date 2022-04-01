@@ -1,3 +1,4 @@
 transformers>=4.16.2
 rjieba
 datasets
+rotary_embedding_torch
