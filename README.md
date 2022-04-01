@@ -151,7 +151,7 @@ tokenizer = BertTokenizerFast.from_pretrained("junnyu/flash_small_wwm_cluecorpus
 model = FLASHForMaskedLM.from_pretrained("junnyu/flash_small_wwm_cluecorpussmall")
 model.eval()
 text = "天气预报说今天的天[MASK]很好，那么我[MASK]一起去公园玩吧！"
-inputs = tokenizer(text, return_tensors="pt", return_token_type_ids=False)
+inputs = tokenizer(text, return_tensors="pt", padding="max_length", max_length=512,  return_token_type_ids=False) #这里必须是512，不然结果可能不对。
 with torch.no_grad():
     pt_outputs = model(**inputs).logits[0]
 
@@ -168,7 +168,7 @@ for i, id in enumerate(tokenizer.encode(text)):
         pt_outputs_sentence += "".join(
             tokenizer.convert_ids_to_tokens([id], skip_special_tokens=True))
 print(pt_outputs_sentence)
-pytorch: 天气预报说今天的天[气+0.9701||天+0.0124||的+0.004||很+0.0016||也+0.0012]很好，那么我[们+0.7939||也+0.0495||我+0.0458||就+0.0295||的+0.0121]一起去公园玩吧！
+# pytorch: 天气预报说今天的天[气+0.9938||天+0.0017||空+0.0011||晴+0.0007||阳+0.0002]很好，那么我[们+0.9367||就+0.0554||也+0.0041||俩+0.0005||还+0.0004]一起去公园玩吧！
 ```
 
 # Tnews分类
